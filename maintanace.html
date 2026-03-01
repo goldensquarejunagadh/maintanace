@@ -314,8 +314,12 @@
                 var line = logicalLines[i].trim();
                 if (!line) continue;
                 var vals = parseLine(line);
-                var row = {};
-                for (var j = 0; j < _headers.length; j++) row[_headers[j]] = (vals[j] || '').replace(/\r/g, '').trim();
+                var row = { _cols: [] };
+                for (var j = 0; j < _headers.length; j++) {
+                    var v = (vals[j] || '').replace(/\r/g, '').trim();
+                    row[_headers[j]] = v;
+                    row._cols[j] = v;
+                }
                 _rows.push(row);
             }
             if (_rows.length === 0) { showError('No data found.'); return; }
@@ -396,13 +400,19 @@
                 html += '<div class="month-header">' + esc(headerLabel) + ' &nbsp;<span style="font-weight:400;font-size:0.8em;opacity:0.85;">(' + entries.length + ' entr' + (entries.length === 1 ? 'y' : 'ies') + ')</span></div>';
                 html += '<div class="month-body">';
 
+                // Find the date column index (next column after selectedHeader)
+                var selectedIdx = _headers.indexOf(selectedHeader);
+                var dateColIdx = (selectedIdx !== -1 && selectedIdx + 1 < _headers.length) ? selectedIdx + 1 : -1;
+
                 entries.forEach(function(row) {
                     var col2Val = row[col2].toLowerCase();
                     var isReceived = col2Val === 'recevied' || col2Val === 'received' || col2Val.indexOf('receiv') !== -1;
                     var cardClass = isReceived ? 'received' : 'pending';
+                    var dateVal = dateColIdx >= 0 ? (row._cols[dateColIdx] || '') : '';
                     html += '<div class="entry-card ' + cardClass + '">';
                     html += '<div class="entry-col"><div class="col-value">' + esc(row[col2]) + '</div></div>';
                     html += '<div class="entry-col"><div class="col-value">' + esc(row[selectedHeader]) + '</div></div>';
+                    html += '<div class="entry-col"><div class="col-value">' + esc(dateVal) + '</div></div>';
                     html += '</div>';
                 });
 
