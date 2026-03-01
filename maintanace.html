@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Golden Square Maintance System</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 12px;
+            -webkit-text-size-adjust: 100%;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            padding: 16px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 16px;
+            text-align: center;
+            font-size: clamp(16px, 4vw, 26px);
+            line-height: 1.3;
+            padding: 0 8px;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 16px;
+            display: none;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .loading {
+            text-align: center;
+            color: #667eea;
+            display: none;
+            margin: 40px 0;
+            font-size: 16px;
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid #e0e0e0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 12px auto 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Filter bar */
+        .filter-bar {
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .filter-bar label {
+            font-weight: 600;
+            color: #444;
+            font-size: clamp(13px, 2.5vw, 15px);
+            white-space: nowrap;
+        }
+        .filter-bar select {
+            padding: 7px 12px;
+            font-size: clamp(13px, 2.5vw, 15px);
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            min-width: 180px;
+        }
+
+        /* Month group section */
+        .month-group {
+            margin-bottom: 24px;
+        }
+        .month-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px 8px 0 0;
+            font-size: clamp(15px, 3vw, 18px);
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .month-body {
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            overflow: hidden;
+        }
+
+        /* Each maintenance entry card */
+        .entry-card {
+            display: flex;
+            align-items: stretch;
+            border-bottom: 1px solid #eee;
+            transition: background 0.15s;
+        }
+        .entry-card:last-child { border-bottom: none; }
+
+        .entry-card.received {
+            background: #e8f5e9;
+        }
+        .entry-card.received:hover { background: #c8e6c9; }
+        .entry-card.received .col-value { color: #1b5e20; font-weight: 600; }
+
+        .entry-card.pending {
+            background: #ffebee;
+        }
+        .entry-card.pending:hover { background: #ffcdd2; }
+        .entry-card.pending .col-value { color: #b71c1c; font-weight: 600; }
+
+        .entry-col {
+            padding: 10px 12px;
+            font-size: clamp(12px, 3.5vw, 14px);
+            color: #333;
+            flex: 1;
+            word-break: break-word;
+            border-right: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            min-width: 0;
+        }
+        .entry-col:last-child { border-right: none; }
+
+        .entry-col .col-label {
+            font-size: clamp(10px, 2vw, 11px);
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .entry-col .col-value {
+            font-size: clamp(12px, 3.5vw, 15px);
+            color: #222;
+            font-weight: 500;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        /* Summary panel */
+        .summary-panel {
+            display: none;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+        .summary-panel-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 16px;
+            font-size: clamp(13px, 3vw, 16px);
+            font-weight: 700;
+            letter-spacing: 0.4px;
+        }
+        .summary-panel-body {
+            background: #f9f9f9;
+            padding: 12px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+        }
+        .summary-item {
+            font-size: clamp(12px, 3vw, 14px);
+            color: #555;
+        }
+        .summary-grand {
+            font-size: clamp(14px, 3.5vw, 17px);
+            font-weight: 800;
+            padding: 6px 14px;
+            border-radius: 6px;
+        }
+        .summary-grand.due   { background: #ffebee; color: #b71c1c; }
+        .summary-grand.surplus { background: #e8f5e9; color: #1b5e20; }
+
+        /* Stats bar */
+        .stats {
+            margin-top: 8px;
+            padding: 10px 14px;
+            background: #ecf0f1;
+            color: #555;
+            font-size: clamp(12px, 2.5vw, 13px);
+            border-radius: 6px;
+            display: none;
+        }
+
+        #content { display: none; }
+
+        @media (max-width: 500px) {
+            .container { padding: 10px 8px; }
+            .entry-card { flex-direction: row; }
+            .entry-col { padding: 8px 8px; border-right: 1px solid #eee; border-bottom: none; }
+            .entry-col:last-child { border-right: none; }
+            .month-total { flex-wrap: wrap; gap: 4px; }
+            .filter-bar select { min-width: 0; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Golden Square Maintance System</h1>
+        <div class="error" id="errorMessage"></div>
+        <div class="loading" id="loading">
+            Loading data...
+            <div class="spinner"></div>
+        </div>
+        <div class="filter-bar" id="filterBar" style="display:none;">
+            <label for="colFilter">View:</label>
+            <select id="colFilter" onchange="applyFilter()">
+                <option value="">-- Select Floor --</option>
+            </select>
+        </div>
+        <div class="summary-panel" id="summaryPanel">
+            <div class="summary-panel-header">📊 Overall Summary</div>
+            <div class="summary-panel-body" id="summaryBody"></div>
+        </div>
+        <div id="content">
+            <div id="groups"></div>
+            <div class="stats" id="stats"></div>
+        </div>
+    </div>
+
+    <script>
+        const SHEET_PUBID = '2PACX-1vQU4JnYmNTbLxkdye3fPVvA0PxGgMPEU0H2WGnrFWQR4lWDYNbdPcCQ2gIHG_kP9l-eG-Z6P-NQedGD';
+        var FETCH_TIMEOUT_MS = 15000;
+
+        function buildUrl() {
+            var sheetUrl = 'https://docs.google.com/spreadsheets/d/e/'
+                + SHEET_PUBID
+                + '/pub?output=csv&gid=0&single=true&t=' + Date.now();
+            return 'https://corsproxy.io/?' + encodeURIComponent(sheetUrl);
+        }
+
+        function showLoading(v) {
+            document.getElementById('loading').style.display = v ? 'block' : 'none';
+        }
+        function showError(msg) {
+            var el = document.getElementById('errorMessage');
+            el.innerHTML = msg + ' <button onclick="loadData()" style="margin-left:8px;padding:4px 12px;background:#667eea;color:white;border:none;border-radius:4px;cursor:pointer;font-size:13px;">Retry</button>';
+            el.style.display = 'block';
+            document.getElementById('content').style.display = 'none';
+            document.getElementById('summaryPanel').style.display = 'none';
+            showLoading(false);
+        }
+
+        function loadData() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('summaryPanel').style.display = 'none';
+            showLoading(true);
+
+            var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            var timer = setTimeout(function() {
+                if (controller) controller.abort();
+            }, FETCH_TIMEOUT_MS);
+
+            var fetchOpts = { cache: 'no-store', redirect: 'follow' };
+            if (controller) fetchOpts.signal = controller.signal;
+
+            fetch(buildUrl(), fetchOpts)
+                .then(function(res) {
+                    clearTimeout(timer);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.text();
+                })
+                .then(function(text) {
+                    if (!text || text.trim() === '') throw new Error('Empty response');
+                    var t = text.trim();
+                    if (t.startsWith('<!') || t.startsWith('<html')) throw new Error('Received HTML instead of CSV');
+                    parseAndDisplay(text);
+                })
+                .catch(function(err) {
+                    clearTimeout(timer);
+                    showError('Could not load data: ' + err.message + '. Please check your internet connection and try again.');
+                });
+        }
+
+        var FILTER_START_IDX = 2;  // col3 onward (0-based)
+        var _headers = [];
+        var _rows = [];
+
+        function parseAndDisplay(csv) {
+            // Split into logical lines respecting quoted multiline cells
+            var logicalLines = splitCSVLines(csv);
+            if (logicalLines.length < 2) { showError('No data found.'); return; }
+
+            _headers = parseLine(logicalLines[0]).map(function(h) { return h.replace(/\r/g, '').trim(); });
+            // Remove trailing empty headers
+            while (_headers.length > 0 && _headers[_headers.length - 1] === '') _headers.pop();
+
+            _rows = [];
+            for (var i = 1; i < logicalLines.length; i++) {
+                var line = logicalLines[i].trim();
+                if (!line) continue;
+                var vals = parseLine(line);
+                var row = {};
+                for (var j = 0; j < _headers.length; j++) row[_headers[j]] = (vals[j] || '').replace(/\r/g, '').trim();
+                _rows.push(row);
+            }
+            if (_rows.length === 0) { showError('No data found.'); return; }
+
+            // Populate dropdown with ALL header names from col3 onward (no hardcoded limit)
+            var sel = document.getElementById('colFilter');
+            sel.innerHTML = '<option value="">-- Select Floor --</option>';
+            for (var k = FILTER_START_IDX; k < _headers.length; k++) {
+                if (!_headers[k]) continue; // skip blank headers
+                var opt = document.createElement('option');
+                opt.value = _headers[k];
+                opt.textContent = _headers[k];
+                sel.appendChild(opt);
+            }
+            console.log('Total columns found:', _headers.length, '| Headers:', _headers);
+
+            document.getElementById('filterBar').style.display = 'flex';
+            document.getElementById('content').style.display = 'block';
+            showLoading(false);
+            applyFilter();
+        }
+
+        function applyFilter() {
+            var selectedHeader = document.getElementById('colFilter').value;
+            renderGroups(selectedHeader || null);
+        }
+
+        function renderGroups(selectedHeader) {
+            var groupsEl   = document.getElementById('groups');
+            var statsEl    = document.getElementById('stats');
+            var summaryEl  = document.getElementById('summaryPanel');
+            var summaryBody = document.getElementById('summaryBody');
+
+            if (!selectedHeader) {
+                groupsEl.innerHTML = '<p style="color:#888;padding:20px;text-align:center;">Please select a floor from the dropdown.</p>';
+                statsEl.style.display = 'none';
+                summaryEl.style.display = 'none';
+                return;
+            }
+
+            // col1 = _headers[0] (month), col2 = _headers[1] (maintenance type)
+            var col1 = _headers[0];
+            var col2 = _headers[1];
+
+            // Filter rows where selected column has a value
+            var filtered = _rows.filter(function(row) {
+                return row[selectedHeader] !== '';
+            });
+
+            if (filtered.length === 0) {
+                groupsEl.innerHTML = '<p style="color:#888;padding:20px;text-align:center;">No data found for this selection.</p>';
+                statsEl.style.display = 'none';
+                summaryEl.style.display = 'none';
+                return;
+            }
+
+            // Group by col1 (month), preserving order of first appearance
+            var monthOrder = [];
+            var monthMap = {};
+            filtered.forEach(function(row) {
+                var month = row[col1] || '(No Month)';
+                if (!monthMap[month]) {
+                    monthMap[month] = [];
+                    monthOrder.push(month);
+                }
+                monthMap[month].push(row);
+            });
+
+            // Grand totals across all months
+            var grandRed = 0, grandGreen = 0;
+
+            var html = '';
+            monthOrder.forEach(function(month) {
+                var entries = monthMap[month];
+                var headerLabel = formatMonthLabel(month);
+
+                html += '<div class="month-group">';
+                html += '<div class="month-header">' + esc(headerLabel) + ' &nbsp;<span style="font-weight:400;font-size:0.8em;opacity:0.85;">(' + entries.length + ' entr' + (entries.length === 1 ? 'y' : 'ies') + ')</span></div>';
+                html += '<div class="month-body">';
+
+                entries.forEach(function(row) {
+                    var col2Val = row[col2].toLowerCase();
+                    var isReceived = col2Val === 'recevied' || col2Val === 'received' || col2Val.indexOf('receiv') !== -1;
+                    var cardClass = isReceived ? 'received' : 'pending';
+                    html += '<div class="entry-card ' + cardClass + '">';
+                    html += '<div class="entry-col"><div class="col-value">' + esc(row[col2]) + '</div></div>';
+                    html += '<div class="entry-col"><div class="col-value">' + esc(row[selectedHeader]) + '</div></div>';
+                    html += '</div>';
+                });
+
+                // Per-month totals
+                var totalRed = 0, totalGreen = 0;
+                entries.forEach(function(row) {
+                    var col2Val = row[col2].toLowerCase();
+                    var isReceived = col2Val === 'recevied' || col2Val === 'received' || col2Val.indexOf('receiv') !== -1;
+                    var amt = parseFloat((row[selectedHeader] || '').replace(/[^0-9.\-]/g, '')) || 0;
+                    if (isReceived) { totalGreen += amt; grandGreen += amt; }
+                    else            { totalRed   += amt; grandRed   += amt; }
+                });
+                var balance = totalRed - totalGreen;
+                var balanceColor = balance <= 0 ? '#1b5e20' : '#b71c1c';
+                var balanceBg   = balance <= 0 ? '#e8f5e9' : '#ffebee';
+                var balanceLabel = balance <= 0 ? 'Fully Paid / Surplus' : 'Balance Due';
+
+                html += '<div class="month-total" style="background:' + balanceBg + ';border-top:2px solid #ddd;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">';
+                html += '<div style="font-size:clamp(11px,2vw,13px);color:#555;">'
+                      + '🔴 Total: <strong>' + totalRed.toLocaleString() + '</strong>'
+                      + ' &nbsp;|&nbsp; 🟢 Received: <strong>' + totalGreen.toLocaleString() + '</strong>'
+                      + '</div>';
+                html += '<div style="font-weight:700;font-size:clamp(13px,2.5vw,15px);color:' + balanceColor + ';">'
+                      + balanceLabel + ': ' + Math.abs(balance).toLocaleString()
+                      + '</div>';
+                html += '</div>';
+                html += '</div></div>';
+            });
+
+            groupsEl.innerHTML = html;
+
+            // Build summary panel
+            var grandBalance = grandRed - grandGreen;
+            var isSurplus = grandBalance <= 0;
+            var summaryHtml = '';
+            summaryHtml += '<div class="summary-item">🔴 <span>Total Billed:</span> <strong>' + grandRed.toLocaleString() + '</strong></div>';
+            summaryHtml += '<div class="summary-item">🟢 <span>Total Received:</span> <strong>' + grandGreen.toLocaleString() + '</strong></div>';
+            summaryHtml += '<div class="summary-item">📅 <span>Months:</span> <strong>' + monthOrder.length + '</strong></div>';
+            summaryHtml += '<div class="summary-grand ' + (isSurplus ? 'surplus' : 'due') + '">'
+                         + (isSurplus ? '✅ Surplus' : '⚠️ Total Due') + ': '
+                         + Math.abs(grandBalance).toLocaleString()
+                         + '</div>';
+            summaryBody.innerHTML = summaryHtml;
+            summaryEl.style.display = 'block';
+
+            statsEl.innerHTML = 'Showing <strong>' + filtered.length + '</strong> entr' + (filtered.length === 1 ? 'y' : 'ies') + ' across <strong>' + monthOrder.length + '</strong> month' + (monthOrder.length === 1 ? '' : 's');
+            statsEl.style.display = 'block';
+        }
+
+        function formatMonthLabel(val) {
+            return val; // year is already included in the cell data
+        }
+
+        // Splits raw CSV text into logical lines, keeping quoted multiline cells intact
+        function splitCSVLines(csv) {
+            var lines = [], cur = '', inQ = false;
+            for (var i = 0; i < csv.length; i++) {
+                var c = csv[i];
+                if (c === '"') {
+                    if (inQ && csv[i + 1] === '"') { cur += '"'; i++; }
+                    else { inQ = !inQ; cur += c; }
+                } else if ((c === '\n') && !inQ) {
+                    lines.push(cur);
+                    cur = '';
+                } else {
+                    cur += c;
+                }
+            }
+            if (cur) lines.push(cur);
+            return lines;
+        }
+
+        function parseLine(line) {
+            line = line.replace(/\r/g, '');  // strip carriage returns from Google Sheets CSV
+            var result = [], cur = '', inQ = false;
+            for (var i = 0; i < line.length; i++) {
+                var c = line[i];
+                if (c === '"') {
+                    if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+                    else { inQ = !inQ; }
+                } else if (c === ',' && !inQ) {
+                    result.push(cur.trim()); cur = '';
+                } else { cur += c; }
+            }
+            result.push(cur.trim());
+            return result;
+        }
+
+        function esc(text) {
+            var d = document.createElement('div');
+            d.textContent = text;
+            return d.innerHTML;
+        }
+
+        showLoading(true);
+        loadData();
+    </script>
+</body>
+</html>
+
