@@ -323,7 +323,7 @@
             // Populate dropdown with ALL header names from col3 onward (no hardcoded limit)
             var sel = document.getElementById('colFilter');
             sel.innerHTML = '<option value="">-- Select Floor --</option>';
-            for (var k = FILTER_START_IDX; k < _headers.length; k++) {
+            for (var k = FILTER_START_IDX; k < _headers.length; k += 2) {
                 if (!_headers[k]) continue; // skip blank headers
                 var opt = document.createElement('option');
                 opt.value = _headers[k];
