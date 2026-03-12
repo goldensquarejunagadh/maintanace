@@ -246,11 +246,29 @@
         const SHEET_PUBID = '2PACX-1vQU4JnYmNTbLxkdye3fPVvA0PxGgMPEU0H2WGnrFWQR4lWDYNbdPcCQ2gIHG_kP9l-eG-Z6P-NQedGD';
         var FETCH_TIMEOUT_MS = 15000;
 
-        function buildUrl() {
-            var sheetUrl = 'https://docs.google.com/spreadsheets/d/e/'
+        function getSheetUrl() {
+            return 'https://docs.google.com/spreadsheets/d/e/'
                 + SHEET_PUBID
                 + '/pub?output=csv&gid=0&single=true&t=' + Date.now();
-            return 'https://corsproxy.io/?' + encodeURIComponent(sheetUrl);
+        }
+
+        // Multiple CORS proxies – tried in order; falls back automatically on 4xx/5xx or network error
+        var PROXY_LIST = [
+            function(u) { return 'https://corsproxy.io/?' + encodeURIComponent(u); },
+            function(u) { return 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u); },
+            function(u) { return 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u); },
+            function(u) { return 'https://thingproxy.freeboard.io/fetch/' + u; },
+            function(u) { return 'https://cors-anywhere.herokuapp.com/' + u; },
+            function(u) { return 'https://proxy.cors.sh/' + u; },
+            function(u) { return 'https://yacdn.org/proxy/' + u; },
+            function(u) { return 'https://crossorigin.me/' + u; },
+            function(u) { return 'https://api.cors.lol/?url=' + encodeURIComponent(u); },
+            function(u) { return 'https://corsproxy.org/?' + encodeURIComponent(u); }
+        ];
+        var _proxyIdx = 0;
+
+        function buildUrl() {
+            return PROXY_LIST[_proxyIdx](getSheetUrl());
         }
 
         function showLoading(v) {
@@ -266,10 +284,14 @@
         }
 
         function loadData() {
+            _proxyIdx = 0;
             document.getElementById('errorMessage').style.display = 'none';
             document.getElementById('summaryPanel').style.display = 'none';
             showLoading(true);
+            tryFetch();
+        }
 
+        function tryFetch() {
             var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
             var timer = setTimeout(function() {
                 if (controller) controller.abort();
@@ -278,7 +300,10 @@
             var fetchOpts = { cache: 'no-store', redirect: 'follow' };
             if (controller) fetchOpts.signal = controller.signal;
 
-            fetch(buildUrl(), fetchOpts)
+            var url = buildUrl();
+            console.log('Trying proxy [' + _proxyIdx + '] (' + _proxyIdx + '/' + PROXY_LIST.length + '):', url);
+
+            fetch(url, fetchOpts)
                 .then(function(res) {
                     clearTimeout(timer);
                     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -292,7 +317,18 @@
                 })
                 .catch(function(err) {
                     clearTimeout(timer);
-                    showError('Could not load data: ' + err.message + '. Please check your internet connection and try again.');
+                    _proxyIdx++;
+                    if (_proxyIdx < PROXY_LIST.length) {
+                        console.warn('Proxy [' + (_proxyIdx - 1) + '] failed (' + err.message + '), retrying with next proxy in 600ms...');
+                        // Small delay before trying the next proxy to avoid rate-limit cascades
+                        setTimeout(tryFetch, 600);
+                    } else {
+                        showError(
+                            'Could not load data after trying all ' + PROXY_LIST.length + ' proxies.<br>' +
+                            'Last error: <em>' + err.message + '</em><br>' +
+                            'Please check your internet connection or try again later.'
+                        );
+                    }
                 });
         }
 
